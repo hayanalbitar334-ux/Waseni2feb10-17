@@ -1,0 +1,5 @@
+{
+  "name": "Wasiny Marketplace",
+  "description": "A complete e-commerce and dashboard application with RTL support.",
+  "requestFramePermissions": ["geolocation"]
+}
