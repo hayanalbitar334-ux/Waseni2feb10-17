@@ -1,17 +1,86 @@
 import { ArrowRight, Share2, Heart, Star, ShoppingCart, Truck, ChevronDown, Plus, Minus } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_PRODUCTS } from '../types';
+import { MOCK_PRODUCTS, cn } from '../types';
 import { useState } from 'react';
 import { motion } from 'motion/react';
+
+import { useProduct } from '../hooks/useProducts';
+import { useCartStore } from '../store/cartStore';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'sonner';
 
 export default function ProductDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const product = MOCK_PRODUCTS.find(p => p.id === id) || MOCK_PRODUCTS[0];
+  const { user } = useAuth();
+  const { product, loading, error } = useProduct(id || '');
+  const addItem = useCartStore(state => state.addItem);
+  
   const [quantity, setQuantity] = useState(1);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      toast.error('يرجى تسجيل الدخول أولاً');
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      await addItem(user.id, product.id, quantity);
+      toast.success('تمت إضافة المنتج للسلة بنجاح');
+    } catch (err) {
+      toast.error('حدث خطأ أثناء إضافة المنتج');
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!user) {
+      toast.error('يرجى تسجيل الدخول أولاً');
+      navigate('/login');
+      return;
+    }
+    await handleAddToCart();
+    navigate('/cart');
+  };
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: product.title,
+          text: product.description,
+          url: window.location.href,
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('تم نسخ الرابط!');
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
+        <h2 className="text-xl font-black text-gray-900 mb-2">المنتج غير موجود</h2>
+        <button onClick={() => navigate('/')} className="text-emerald-600 font-bold">العودة للرئيسية</button>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white min-h-screen pb-24">
+    <div className="bg-white min-h-screen pb-32">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 px-4 py-4 flex items-center justify-between pointer-events-none">
         <button 
@@ -21,11 +90,20 @@ export default function ProductDetailsPage() {
           <ArrowRight size={20} />
         </button>
         <div className="flex gap-2 pointer-events-auto">
-          <button className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
+          <button 
+            onClick={handleShare}
+            className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm"
+          >
             <Share2 size={20} />
           </button>
-          <button className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm text-red-500">
-            <Heart size={20} />
+          <button 
+            onClick={() => setIsFavorite(!isFavorite)}
+            className={cn(
+              "w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm transition-colors",
+              isFavorite ? "text-red-500" : "text-gray-400"
+            )}
+          >
+            <Heart size={20} fill={isFavorite ? "currentColor" : "none"} />
           </button>
         </div>
       </header>
@@ -75,11 +153,17 @@ export default function ProductDetailsPage() {
         {/* Description */}
         <div className="mb-8">
           <h3 className="text-lg font-black text-gray-900 mb-3">الوصف</h3>
-          <p className="text-sm text-gray-500 leading-relaxed">
+          <p className={cn(
+            "text-sm text-gray-500 leading-relaxed",
+            !showFullDescription && "line-clamp-3"
+          )}>
             {product.description || 'ساعة وصيني الذكية تجمع بين التصميم العصري والأداء القوي. تتميز بشاشة AMOLED فائقة الوضوح، وعمر بطارية يدوم حتى 14 يوماً. تدعم جميع الإشعارات العربية...'}
           </p>
-          <button className="flex items-center gap-1 text-emerald-600 text-sm font-bold mt-2">
-            اقرأ المزيد <ChevronDown size={16} />
+          <button 
+            onClick={() => setShowFullDescription(!showFullDescription)}
+            className="flex items-center gap-1 text-emerald-600 text-sm font-bold mt-2"
+          >
+            {showFullDescription ? 'عرض أقل' : 'اقرأ المزيد'} <ChevronDown size={16} className={cn("transition-transform", showFullDescription && "rotate-180")} />
           </button>
         </div>
 
@@ -116,12 +200,18 @@ export default function ProductDetailsPage() {
       </div>
 
       {/* Footer Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 flex gap-4 z-50">
-        <button className="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 flex gap-4 z-50 pb-8">
+        <button 
+          onClick={handleAddToCart}
+          className="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
+        >
           <ShoppingCart size={20} />
           إضافة للسلة
         </button>
-        <button className="flex-1 border-2 border-emerald-600 text-emerald-600 font-black py-4 rounded-2xl">
+        <button 
+          onClick={handleBuyNow}
+          className="flex-1 border-2 border-emerald-600 text-emerald-600 font-black py-4 rounded-2xl"
+        >
           شراء الآن
         </button>
       </div>

@@ -1,15 +1,34 @@
-import { Search, Bell, Filter, ShoppingBag, Clock } from 'lucide-react';
-import { MOCK_PRODUCTS } from '../types';
+import React from 'react';
+import { Search, Bell, Filter, ShoppingBag, Clock, LayoutGrid } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { motion } from 'motion/react';
+import { useProducts } from '../hooks/useProducts';
+import { ProductSkeleton } from '../components/Skeleton';
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const { products, loading, error } = useProducts();
+  
   const categories = [
     { name: 'إلكترونيات', icon: '📱', color: 'bg-emerald-50' },
     { name: 'أزياء', icon: '👕', color: 'bg-blue-50' },
     { name: 'المنزل', icon: '🛋️', color: 'bg-orange-50' },
     { name: 'جمال', icon: '💄', color: 'bg-pink-50' },
   ];
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    alert('البحث قيد التطوير');
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white p-6 text-center">
+        <p className="text-red-500">حدث خطأ أثناء تحميل المنتجات. يرجى المحاولة لاحقاً.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-24">
@@ -23,12 +42,15 @@ export default function HomePage() {
             <h1 className="text-xl font-black text-gray-900">وصيني</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600">
+            <button 
+              onClick={() => alert('لا توجد تنبيهات جديدة')}
+              className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600"
+            >
               <Bell size={20} />
             </button>
           </div>
         </div>
-        <div className="flex gap-2">
+        <form onSubmit={handleSearch} className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
@@ -37,21 +59,29 @@ export default function HomePage() {
               className="w-full bg-gray-50 border-none rounded-xl py-3 pr-10 pl-4 text-sm focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
-          <button className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center">
+          <button 
+            type="button"
+            onClick={() => alert('الفلاتر قيد التطوير')}
+            className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center"
+          >
             <Filter size={20} />
           </button>
-        </div>
+        </form>
       </header>
 
       {/* Categories */}
       <section className="px-4 py-6 overflow-x-auto flex gap-4 no-scrollbar">
         {categories.map((cat) => (
-          <div key={cat.name} className="flex flex-col items-center gap-2 flex-shrink-0">
+          <button 
+            key={cat.name} 
+            onClick={() => alert(`عرض فئة: ${cat.name}`)}
+            className="flex flex-col items-center gap-2 flex-shrink-0"
+          >
             <div className={`w-16 h-16 ${cat.color} rounded-2xl flex items-center justify-center text-2xl shadow-sm`}>
               {cat.icon}
             </div>
             <span className="text-xs font-bold text-gray-600">{cat.name}</span>
-          </div>
+          </button>
         ))}
       </section>
 
@@ -85,9 +115,13 @@ export default function HomePage() {
           <button className="text-emerald-600 text-sm font-bold">عرض الكل</button>
         </div>
         <div className="flex gap-4 overflow-x-auto px-4 no-scrollbar">
-          {MOCK_PRODUCTS.slice(0, 3).map(p => (
-            <ProductCard key={p.id} product={p} variant="horizontal" />
-          ))}
+          {loading ? (
+            Array(3).fill(0).map((_, i) => <div key={i} className="w-48 flex-shrink-0"><ProductSkeleton /></div>)
+          ) : (
+            products.slice(0, 3).map(p => (
+              <ProductCard key={p.id} product={p} variant="horizontal" />
+            ))
+          )}
         </div>
       </section>
 
@@ -105,13 +139,15 @@ export default function HomePage() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          {MOCK_PRODUCTS.map(p => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+          {loading ? (
+            Array(4).fill(0).map((_, i) => <ProductSkeleton key={i} />)
+          ) : (
+            products.map(p => (
+              <ProductCard key={p.id} product={p} />
+            ))
+          )}
         </div>
       </section>
     </div>
   );
 }
-
-import { LayoutGrid } from 'lucide-react';

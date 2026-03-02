@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, MailCheck, ExternalLink } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function RegisterPage() {
+  const { signInAsAdmin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -175,6 +177,23 @@ export default function RegisterPage() {
           className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 disabled:opacity-70"
         >
           {loading ? <Loader2 className="animate-spin" size={20} /> : 'إنشاء الحساب'}
+        </button>
+
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-100"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-gray-400">أو</span>
+          </div>
+        </div>
+
+        <button 
+          type="button"
+          onClick={() => { signInAsAdmin(); navigate('/'); }}
+          className="w-full bg-gray-900 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"
+        >
+          الدخول كمسؤول (تجريبي)
         </button>
       </form>
 

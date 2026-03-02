@@ -7,16 +7,26 @@ export default function ProfilePage() {
   const { user, signOut } = useAuth();
 
   const menuItems = [
-    { icon: ShoppingBag, label: 'طلباتي', color: 'bg-emerald-50 text-emerald-600' },
-    { icon: Heart, label: 'المفضلة', color: 'bg-emerald-50 text-emerald-600' },
-    { icon: MapPin, label: 'العناوين المحفوظة', color: 'bg-emerald-50 text-emerald-600' },
-    { icon: Star, label: 'تقييماتي', color: 'bg-emerald-50 text-emerald-600' },
-    { icon: Settings, label: 'الإعدادات', color: 'bg-emerald-50 text-emerald-600' },
+    { icon: ShoppingBag, label: 'طلباتي', color: 'bg-emerald-50 text-emerald-600', path: '/orders' },
+    { icon: Heart, label: 'المفضلة', color: 'bg-emerald-50 text-emerald-600', path: '/favorites' },
+    { icon: MapPin, label: 'العناوين المحفوظة', color: 'bg-emerald-50 text-emerald-600', path: '/addresses' },
+    { icon: Star, label: 'تقييماتي', color: 'bg-emerald-50 text-emerald-600', path: '/reviews' },
+    { icon: Settings, label: 'الإعدادات', color: 'bg-emerald-50 text-emerald-600', path: '/settings' },
   ];
 
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  const handleMenuClick = (path: string) => {
+    // For now, most of these will just show a message or navigate to home
+    // since we haven't built all the sub-pages yet
+    if (path === '/orders') {
+      navigate('/cart'); // Redirect to cart as a placeholder for orders
+    } else {
+      alert(`هذه الصفحة (${path}) قيد التطوير حالياً`);
+    }
   };
 
   return (
@@ -39,6 +49,21 @@ export default function ProfilePage() {
 
       <div className="p-6 space-y-6">
         {/* Merchant CTA */}
+        {user?.email === 'saryatest123@gmail.com' && (
+          <div className="bg-gray-900 rounded-[40px] p-8 border border-gray-800 text-center mb-6">
+            <h2 className="text-xl font-black text-white mb-2">لوحة تحكم المسؤول</h2>
+            <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+              إدارة المنتجات، الطلبات، والمستخدمين في وصيني
+            </p>
+            <button 
+              onClick={() => navigate('/admin')}
+              className="w-full bg-white text-gray-900 font-black py-4 rounded-2xl shadow-lg"
+            >
+              دخول لوحة التحكم
+            </button>
+          </div>
+        )}
+
         <div className="bg-emerald-50 rounded-[40px] p-8 border border-emerald-100 text-center">
           <h2 className="text-xl font-black text-emerald-900 mb-2">كن تاجراً معنا</h2>
           <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">
@@ -57,6 +82,7 @@ export default function ProfilePage() {
           {menuItems.map((item, i) => (
             <button 
               key={i}
+              onClick={() => handleMenuClick(item.path)}
               className={`w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors ${
                 i !== menuItems.length - 1 ? 'border-b border-gray-50' : ''
               }`}

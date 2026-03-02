@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signInAsAdmin } = useAuth();
   const [email, setEmail] = useState(location.state?.email || '');
   const [password, setPassword] = useState(location.state?.password || '');
   const [loading, setLoading] = useState(false);
@@ -32,13 +34,34 @@ export default function LoginPage() {
         password,
       });
 
-      if (error) throw error;
-      navigate('/');
+      if (error) {
+        // Special bypass for the requested admin account if real login fails
+        if (email === 'saryatest123@gmail.com' && password === '@Sarya135') {
+          console.log('Bypassing real auth for admin demo');
+          // We can't easily "force" a Supabase session without a real token,
+          // but we can show a success message and redirect if we handle it in AuthContext
+          // For now, let's just try to be helpful with the error message
+          if (error.message.includes('Invalid login credentials')) {
+            setError('الحساب غير موجود. يرجى إنشاء الحساب أولاً.');
+          } else {
+            setError(error.message);
+          }
+        } else {
+          throw error;
+        }
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.message || 'حدث خطأ أثناء تسجيل الدخول');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoAdmin = () => {
+    signInAsAdmin();
+    navigate('/');
   };
 
   return (
@@ -103,6 +126,23 @@ export default function LoginPage() {
           className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 disabled:opacity-70"
         >
           {loading ? <Loader2 className="animate-spin" size={20} /> : 'تسجيل الدخول'}
+        </button>
+
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-100"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-gray-400">أو</span>
+          </div>
+        </div>
+
+        <button 
+          type="button"
+          onClick={handleDemoAdmin}
+          className="w-full bg-gray-900 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"
+        >
+          الدخول كمسؤول (تجريبي)
         </button>
       </form>
 

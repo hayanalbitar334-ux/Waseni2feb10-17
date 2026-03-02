@@ -1,7 +1,32 @@
-import { Bell, User, Plus, Package, ShoppingCart, TrendingUp, ChevronLeft, CheckCircle2, Truck, Clock } from 'lucide-react';
+import { Bell, User, Plus, Package, ShoppingCart, TrendingUp, ChevronLeft, CheckCircle2, Truck, Clock, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts';
+import { useAuth } from '../context/AuthContext';
+import { useSellerStats } from '../hooks/useSellerStats';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { StatsSkeleton } from '../components/Skeleton';
 
 export default function MerchantDashboard() {
+  const { user } = useAuth();
+  const [store, setStore] = useState<any>(null);
+  const { stats, loading, error } = useSellerStats(store?.id || '');
+
+  useEffect(() => {
+    async function fetchStore() {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('owner_id', user.id)
+        .single();
+      
+      if (!error && data) {
+        setStore(data);
+      }
+    }
+    fetchStore();
+  }, [user]);
+
   const barData = [
     { name: '١٥ مايو', value: 300 },
     { name: '٢٠ مايو', value: 250 },
@@ -12,17 +37,13 @@ export default function MerchantDashboard() {
     { name: '١٥ يونيو', value: 200 },
   ];
 
-  const stats = [
-    { label: 'إجمالي المبيعات', value: '٤٥,٠٠٠ ر.س', change: '+١٢%', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'الطلبات النشطة', value: '١٢', icon: ShoppingCart, color: 'bg-blue-50 text-blue-600' },
-    { label: 'إجمالي المنتجات', value: '١٥٨', icon: Package, color: 'bg-orange-50 text-orange-600' },
-  ];
-
-  const recentOrders = [
-    { id: 'W-9842', customer: 'أحمد محمد', price: 240, status: 'قيد التجهيز', time: 'منذ ساعة', icon: Package, statusColor: 'bg-yellow-50 text-yellow-600' },
-    { id: 'W-9840', customer: 'سارة خالد', price: 1120, status: 'في الطريق', time: 'منذ ٤ ساعات', icon: Truck, statusColor: 'bg-blue-50 text-blue-600' },
-    { id: 'W-9835', customer: 'فهد العتيبي', price: 560, status: 'تم التوصيل', time: 'أمس', icon: CheckCircle2, statusColor: 'bg-emerald-50 text-emerald-600' },
-  ];
+  if (loading && !store) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24">
@@ -33,7 +54,7 @@ export default function MerchantDashboard() {
             <ShoppingCart size={24} />
           </div>
           <div>
-            <h1 className="text-lg font-black text-gray-900">متجر وصيني الرئيسي</h1>
+            <h1 className="text-lg font-black text-gray-900">{store?.store_name || 'متجري'}</h1>
             <p className="text-[10px] text-emerald-600 font-bold">بائع معتمد • الرياض</p>
           </div>
         </div>
@@ -43,36 +64,40 @@ export default function MerchantDashboard() {
             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
           </button>
           <div className="w-10 h-10 rounded-full bg-emerald-100 overflow-hidden border-2 border-white shadow-sm">
-             <img src="https://picsum.photos/seed/merchant-user/100/100" alt="Profile" referrerPolicy="no-referrer" />
+             <img src={user?.user_metadata?.avatar_url || "https://picsum.photos/seed/merchant-user/100/100"} alt="Profile" referrerPolicy="no-referrer" />
           </div>
         </div>
       </header>
 
       <div className="p-6 space-y-6">
         {/* Sales Stats */}
-        <div className="bg-white rounded-[40px] p-6 shadow-sm border border-gray-100">
-           <div className="flex items-center justify-between mb-2">
-             <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+١٢%</span>
-             <span className="text-sm text-gray-400">إجمالي المبيعات</span>
-           </div>
-           <h2 className="text-3xl font-black text-gray-900 text-center mb-6">٤٥,٠٠٠ ر.س</h2>
-           <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-3xl p-4 flex flex-col items-center">
-                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-2">
-                  <ShoppingCart size={20} />
+        {loading ? (
+          <StatsSkeleton />
+        ) : (
+          <div className="bg-white rounded-[40px] p-6 shadow-sm border border-gray-100">
+             <div className="flex items-center justify-between mb-2">
+               <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+١٢%</span>
+               <span className="text-sm text-gray-400">إجمالي المبيعات</span>
+             </div>
+             <h2 className="text-3xl font-black text-gray-900 text-center mb-6">{stats.totalSales.toLocaleString()} ر.س</h2>
+             <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-3xl p-4 flex flex-col items-center">
+                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-2">
+                    <ShoppingCart size={20} />
+                  </div>
+                  <span className="text-[10px] text-gray-400 mb-1">الطلبات النشطة</span>
+                  <span className="text-xl font-black text-gray-900">{stats.activeOrders}</span>
                 </div>
-                <span className="text-[10px] text-gray-400 mb-1">الطلبات النشطة</span>
-                <span className="text-xl font-black text-gray-900">١٢</span>
-              </div>
-              <div className="bg-gray-50 rounded-3xl p-4 flex flex-col items-center">
-                <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center mb-2">
-                  <Package size={20} />
+                <div className="bg-gray-50 rounded-3xl p-4 flex flex-col items-center">
+                  <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center mb-2">
+                    <Package size={20} />
+                  </div>
+                  <span className="text-[10px] text-gray-400 mb-1">إجمالي المنتجات</span>
+                  <span className="text-xl font-black text-gray-900">{stats.totalProducts}</span>
                 </div>
-                <span className="text-[10px] text-gray-400 mb-1">إجمالي المنتجات</span>
-                <span className="text-xl font-black text-gray-900">١٥٨</span>
-              </div>
-           </div>
-        </div>
+             </div>
+          </div>
+        )}
 
         {/* Revenue Analysis */}
         <div className="bg-white rounded-[40px] p-6 shadow-sm border border-gray-100">
@@ -109,26 +134,37 @@ export default function MerchantDashboard() {
             <button className="text-emerald-600 text-xs font-bold">عرض الكل</button>
           </div>
           <div className="space-y-4">
-            {recentOrders.map((order, i) => (
-              <div key={i} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
-                <div className={`w-14 h-14 ${order.statusColor.split(' ')[0]} rounded-2xl flex items-center justify-center`}>
-                  <order.icon size={28} />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-sm font-black text-gray-900">طلب #{order.id}</h4>
-                    <span className="text-[10px] text-gray-400">{order.time}</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mb-2">العميل: {order.customer}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-emerald-600 font-black text-sm">{order.price} ر.س</span>
-                    <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${order.statusColor}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
+            {stats.recentOrders.length === 0 ? (
+              <div className="bg-white rounded-3xl p-8 text-center border border-gray-100">
+                <p className="text-gray-400 text-sm">لا توجد طلبات أخيرة</p>
               </div>
-            ))}
+            ) : (
+              stats.recentOrders.map((item, i) => (
+                <div key={i} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+                  <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                    <Package size={28} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-sm font-black text-gray-900">{item.products?.title}</h4>
+                      <span className="text-[10px] text-gray-400">#{item.orders?.id.slice(0, 5)}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mb-2">الكمية: {item.quantity}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-600 font-black text-sm">{item.unit_price * item.quantity} ر.س</span>
+                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${
+                        item.orders?.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' : 
+                        item.orders?.status === 'pending' ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600'
+                      }`}>
+                        {item.orders?.status === 'pending' ? 'قيد الانتظار' : 
+                         item.orders?.status === 'processing' ? 'قيد التجهيز' : 
+                         item.orders?.status === 'shipped' ? 'في الطريق' : 'تم التوصيل'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
       </div>

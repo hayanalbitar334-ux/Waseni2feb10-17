@@ -9,6 +9,9 @@ import { Home, LayoutGrid, ShoppingCart, ClipboardList, User, Bell, Search, Filt
 import { cn } from './types';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
+import { Toaster } from 'sonner';
+import { ProtectedRoute } from './components/ProtectedRoute';
+
 // Pages
 import HomePage from './pages/HomePage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
@@ -20,19 +23,10 @@ import MerchantDashboard from './pages/MerchantDashboard';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-white">جاري التحميل...</div>;
-  if (!user) return <Navigate to="/login" />;
-  
-  return <>{children}</>;
-}
-
 function BottomNav() {
   const location = useLocation();
   const path = location.pathname;
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const navItems = [
     { icon: Home, label: 'الرئيسية', path: '/' },
@@ -42,9 +36,13 @@ function BottomNav() {
     { icon: User, label: 'حسابي', path: user ? '/profile' : '/login' },
   ];
 
+  if (profile?.role === 'seller') {
+    navItems.splice(3, 0, { icon: LayoutGrid, label: 'متجري', path: '/merchant' });
+  }
+
   // Hide bottom nav on specific pages
   const hideOn = ['/checkout', '/login', '/register'];
-  if (hideOn.includes(path) || path.startsWith('/admin') || path.startsWith('/merchant')) return null;
+  if (hideOn.includes(path) || path.startsWith('/admin') || path.startsWith('/merchant') || path.startsWith('/product/')) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-2 flex justify-between items-center z-50">
@@ -90,13 +88,14 @@ export default function App() {
             {/* Protected Routes */}
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/merchant" element={<ProtectedRoute><MerchantDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/merchant" element={<ProtectedRoute requiredRole="seller"><MerchantDashboard /></ProtectedRoute>} />
             
             {/* Fallback to home */}
             <Route path="*" element={<HomePage />} />
           </Routes>
           <BottomNav />
+          <Toaster position="top-center" richColors />
         </div>
       </Router>
     </AuthProvider>
