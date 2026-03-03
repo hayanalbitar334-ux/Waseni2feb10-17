@@ -67,7 +67,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col px-6 pt-12">
       <header className="mb-12">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mb-8">
+        <button onClick={() => navigate('/')} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mb-8">
           <ArrowRight size={20} />
         </button>
         <h1 className="text-3xl font-black text-gray-900 mb-2">تسجيل الدخول</h1>
@@ -117,7 +117,13 @@ export default function LoginPage() {
         </div>
 
         <div className="text-left">
-          <button type="button" className="text-emerald-600 text-sm font-bold">نسيت كلمة المرور؟</button>
+          <button 
+            type="button" 
+            onClick={() => alert('ميزة استعادة كلمة المرور قيد التطوير حالياً')}
+            className="text-emerald-600 text-sm font-bold"
+          >
+            نسيت كلمة المرور؟
+          </button>
         </div>
 
         <button 

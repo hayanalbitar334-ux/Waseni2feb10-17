@@ -97,7 +97,7 @@ export default function RegisterPage() {
 
         <div className="mt-auto pb-12">
           <p className="text-gray-400 text-sm">
-            لم يصلك البريد؟ <button className="text-emerald-600 font-bold">إعادة الإرسال</button>
+            لم يصلك البريد؟ <button onClick={() => alert('تم إعادة إرسال البريد الإلكتروني')} className="text-emerald-600 font-bold">إعادة الإرسال</button>
           </p>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col px-6 pt-12">
       <header className="mb-12">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mb-8">
+        <button onClick={() => navigate('/')} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mb-8">
           <ArrowRight size={20} />
         </button>
         <h1 className="text-3xl font-black text-gray-900 mb-2">إنشاء حساب</h1>

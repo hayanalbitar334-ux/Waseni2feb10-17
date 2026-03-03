@@ -1,6 +1,6 @@
 import { ArrowRight, MapPin, Plus, Apple, CreditCard, Wallet, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 
 import { useCartStore } from '../store/cartStore';
@@ -11,31 +11,64 @@ import { toast } from 'sonner';
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { items, getTotals } = useCartStore();
+  const { items, loading, getTotals, clearCart, fetchItems } = useCartStore();
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
+
+  useEffect(() => {
+    const init = async () => {
+      const userId = user?.email === 'saryatest123@gmail.com' ? null : (user?.id || null);
+      await fetchItems(userId);
+      setInitializing(false);
+    };
+    init();
+  }, [user, fetchItems]);
+
+  useEffect(() => {
+    if (!initializing && !loading && items.length === 0 && !isSuccess) {
+      navigate('/cart');
+      // toast.error('السلة فارغة'); // Optional: prevent toast spam on initial load if empty
+    }
+  }, [items, loading, isSuccess, navigate, initializing]);
 
   const totals = getTotals();
 
+  const [guestInfo, setGuestInfo] = useState({ name: '', email: '', phone: '' });
+  const [address, setAddress] = useState('');
+
   const handleConfirmOrder = async () => {
-    if (!user) return;
+    if (!user && (!guestInfo.name || !guestInfo.email || !guestInfo.phone)) {
+      toast.error('يرجى تعبئة بياناتك الشخصية');
+      return;
+    }
+
+    if (!address.trim()) {
+      toast.error('يرجى إدخال عنوان الشحن');
+      return;
+    }
     
     setIsProcessing(true);
     const result = await placeOrder(
-      user.id,
+      user?.id || null,
       items,
       totals,
       paymentMethod,
-      'شارع الملك فهد، حي الصحافة، الرياض، 12345' // Hardcoded for demo
+      address,
+      !user ? guestInfo : undefined
     );
 
     setIsProcessing(false);
-    if (result.success) {
+    if (result.success && result.orderId) {
       setIsSuccess(true);
+      setOrderId(result.orderId);
+      clearCart(user?.id || null);
       toast.success('تم إرسال طلبك بنجاح!');
     } else {
-      toast.error('حدث خطأ أثناء إتمام الطلب');
+      console.error('Checkout error:', result.error);
+      toast.error(`حدث خطأ أثناء إتمام الطلب: ${result.error?.message || 'خطأ غير معروف'}`);
     }
   };
 
@@ -52,7 +85,10 @@ export default function CheckoutPage() {
           </motion.div>
         </div>
         <h2 className="text-2xl font-black text-gray-900 mb-2">تم تأكيد طلبك بنجاح!</h2>
-        <p className="text-gray-500 mb-8">شكراً لتسوقك مع وصيني. ستصلك رسالة تأكيد عبر البريد الإلكتروني قريباً.</p>
+        <p className="text-gray-500 mb-2">رقم الطلب: <span className="font-mono font-bold text-gray-900">#{orderId?.slice(0, 8)}</span></p>
+        <p className="text-gray-500 mb-8 text-sm">
+          {user ? 'يمكنك متابعة حالة الطلب من صفحة "الطلبات".' : 'شكراً لتسوقك معنا. يرجى الاحتفاظ برقم الطلب للمراجعة.'}
+        </p>
         <button 
           onClick={() => navigate('/')}
           className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg"
@@ -69,35 +105,71 @@ export default function CheckoutPage() {
       <header className="bg-white px-4 py-6 flex items-center justify-between sticky top-0 z-40">
         <div className="w-10" />
         <h1 className="text-xl font-black text-gray-900">إتمام الطلب</h1>
-        <button onClick={() => navigate(-1)} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
+        <button onClick={() => navigate('/cart')} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
           <ArrowRight size={20} />
         </button>
       </header>
 
       <div className="p-4 space-y-8">
+        {/* Guest Info */}
+        {!user && (
+          <section>
+            <h2 className="text-lg font-black text-gray-900 mb-4">بياناتك الشخصية</h2>
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">الاسم الكامل</label>
+                <input 
+                  type="text" 
+                  value={guestInfo.name}
+                  onChange={(e) => setGuestInfo({...guestInfo, name: e.target.value})}
+                  className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-emerald-500/20"
+                  placeholder="مثال: محمد أحمد"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">البريد الإلكتروني</label>
+                <input 
+                  type="email" 
+                  value={guestInfo.email}
+                  onChange={(e) => setGuestInfo({...guestInfo, email: e.target.value})}
+                  className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-emerald-500/20"
+                  placeholder="name@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">رقم الهاتف</label>
+                <input 
+                  type="tel" 
+                  value={guestInfo.phone}
+                  onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
+                  className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-emerald-500/20"
+                  placeholder="05xxxxxxxx"
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Shipping Address */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-black text-gray-900">عنوان الشحن</h2>
-            <button className="text-emerald-600 text-sm font-bold flex items-center gap-1">
-              <Plus size={16} /> إضافة عنوان جديد
-            </button>
           </div>
-          <div className="bg-white rounded-3xl p-4 flex items-center gap-4 shadow-sm border border-gray-100">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
-              <img src="https://picsum.photos/seed/map/200/200" alt="Map" referrerPolicy="no-referrer" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-black text-gray-900">المنزل</h3>
-                <div className="w-5 h-5 bg-emerald-50 text-emerald-600 rounded-md flex items-center justify-center">
-                  <MapPin size={12} />
-                </div>
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <MapPin size={20} />
               </div>
-              <p className="text-[10px] text-gray-400 leading-relaxed">
-                شارع الملك فهد، حي الصحافة، الرياض، 12345
-              </p>
-              <button className="text-emerald-600 text-[10px] font-bold bg-emerald-50 px-2 py-1 rounded-lg mt-2">تغيير العنوان</button>
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-bold text-gray-700 block">تفاصيل العنوان</label>
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-emerald-500/20 min-h-[100px] resize-none"
+                  placeholder="المدينة، الحي، اسم الشارع، رقم المبنى..."
+                />
+                <p className="text-[10px] text-gray-400">يرجى كتابة العنوان بالتفصيل لضمان سرعة التوصيل</p>
+              </div>
             </div>
           </div>
         </section>

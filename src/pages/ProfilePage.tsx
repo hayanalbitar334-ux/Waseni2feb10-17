@@ -8,10 +8,7 @@ export default function ProfilePage() {
 
   const menuItems = [
     { icon: ShoppingBag, label: 'طلباتي', color: 'bg-emerald-50 text-emerald-600', path: '/orders' },
-    { icon: Heart, label: 'المفضلة', color: 'bg-emerald-50 text-emerald-600', path: '/favorites' },
     { icon: MapPin, label: 'العناوين المحفوظة', color: 'bg-emerald-50 text-emerald-600', path: '/addresses' },
-    { icon: Star, label: 'تقييماتي', color: 'bg-emerald-50 text-emerald-600', path: '/reviews' },
-    { icon: Settings, label: 'الإعدادات', color: 'bg-emerald-50 text-emerald-600', path: '/settings' },
   ];
 
   const handleLogout = async () => {
@@ -23,7 +20,7 @@ export default function ProfilePage() {
     // For now, most of these will just show a message or navigate to home
     // since we haven't built all the sub-pages yet
     if (path === '/orders') {
-      navigate('/cart'); // Redirect to cart as a placeholder for orders
+      navigate('/orders');
     } else {
       alert(`هذه الصفحة (${path}) قيد التطوير حالياً`);
     }
@@ -39,7 +36,10 @@ export default function ProfilePage() {
               <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} alt="Avatar" referrerPolicy="no-referrer" />
             </div>
           </div>
-          <button className="absolute bottom-0 right-0 w-10 h-10 bg-emerald-600 text-white rounded-full border-4 border-white flex items-center justify-center">
+          <button 
+            onClick={() => alert('تعديل الملف الشخصي قيد التطوير')}
+            className="absolute bottom-0 right-0 w-10 h-10 bg-emerald-600 text-white rounded-full border-4 border-white flex items-center justify-center"
+          >
             <Edit2 size={16} />
           </button>
         </div>
@@ -64,18 +64,21 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="bg-emerald-50 rounded-[40px] p-8 border border-emerald-100 text-center">
-          <h2 className="text-xl font-black text-emerald-900 mb-2">كن تاجراً معنا</h2>
-          <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">
-            ابدأ ببيع منتجاتك والوصول لآلاف العملاء الآن في وصيني
-          </p>
-          <button 
-            onClick={() => navigate('/merchant')}
-            className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-600/20"
-          >
-            سجل كتاجر
-          </button>
-        </div>
+        {/* Merchant CTA - Hide for Admin */}
+        {user?.email !== 'saryatest123@gmail.com' && (
+          <div className="bg-emerald-50 rounded-[40px] p-8 border border-emerald-100 text-center">
+            <h2 className="text-xl font-black text-emerald-900 mb-2">كن تاجراً معنا</h2>
+            <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">
+              ابدأ ببيع منتجاتك والوصول لآلاف العملاء الآن في وصيني
+            </p>
+            <button 
+              onClick={() => navigate('/merchant')}
+              className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-600/20"
+            >
+              سجل كتاجر
+            </button>
+          </div>
+        )}
 
         {/* Menu Items */}
         <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">

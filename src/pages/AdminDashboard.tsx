@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Bell, Search, Menu, CheckCircle2, Users, ShoppingBag, 
   DollarSign, Clock, AlertCircle, Trash2, Edit, Check, X, 
@@ -10,18 +11,223 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Tab = 'overview' | 'vendors' | 'products' | 'orders' | 'users';
+type Tab = 'overview' | 'vendors' | 'products' | 'orders' | 'users' | 'home';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  // ... existing state ...
+
+  const handleSaveHomeConfig = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setUploading(true);
+    const formData = new FormData(e.currentTarget);
+    
+    let bannerUrl = homeConfig?.banner_image_url;
+
+    if (selectedFile) {
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `banner-${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products') // Using products bucket for now as it's public
+        .upload(filePath, selectedFile);
+
+      if (uploadError) {
+        toast.error('فشل رفع الصورة: ' + uploadError.message);
+        setUploading(false);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+      
+      bannerUrl = publicUrl;
+    }
+
+    const updates = {
+      banner_image_url: bannerUrl,
+      banner_position: parseInt(formData.get('banner_position') as string),
+      categories_position: parseInt(formData.get('categories_position') as string),
+      categories_layout: formData.get('categories_layout'),
+      news_ticker_text: formData.get('news_ticker_text'),
+      news_ticker_enabled: formData.get('news_ticker_enabled') === 'on'
+    };
+
+    const { error } = await supabase
+      .from('home_config')
+      .upsert({ id: homeConfig?.id, ...updates });
+
+    if (error) {
+      toast.error('فشل تحديث الإعدادات');
+    } else {
+      toast.success('تم تحديث إعدادات الصفحة الرئيسية');
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      fetchData();
+    }
+    setUploading(false);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const icon = formData.get('icon') as string;
+
+    // Use upsert or insert, but check if we are handling errors correctly
+    const { error } = await supabase.from('categories').insert({ name, icon });
+
+    if (error) {
+      console.error('Add category error:', error);
+      toast.error(`فشل إضافة التصنيف: ${error.message}`);
+    } else {
+      toast.success('تم إضافة التصنيف بنجاح');
+      setShowCategoryModal(false);
+      fetchData();
+    }
+  };
+
+  // ... existing functions ...
+
+  const renderHomeConfig = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-[40px] p-6 shadow-sm border border-gray-100">
+        <h3 className="text-lg font-black text-gray-900 mb-6">إعدادات الصفحة الرئيسية</h3>
+        <form onSubmit={handleSaveHomeConfig} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">صورة البانر</label>
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-24 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
+                {previewUrl || homeConfig?.banner_image_url ? (
+                  <img 
+                    src={previewUrl || homeConfig?.banner_image_url} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <ImageIcon className="text-gray-300" />
+                )}
+                <input 
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-gray-500 mb-2">اضغط على المربع لرفع صورة جديدة</p>
+                {uploading && <p className="text-xs text-emerald-600 font-bold">جاري الرفع...</p>}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">موقع البانر (الترتيب)</label>
+              <input 
+                name="banner_position"
+                type="number"
+                defaultValue={homeConfig?.banner_position || 2}
+                className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">موقع التصنيفات (الترتيب)</label>
+              <input 
+                name="categories_position"
+                type="number"
+                defaultValue={homeConfig?.categories_position || 1}
+                className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">شكل عرض التصنيفات</label>
+            <select 
+              name="categories_layout"
+              defaultValue={homeConfig?.categories_layout || 'slider'}
+              className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value="slider">شريط تمرير (Slider)</option>
+              <option value="grid">شبكة (Grid)</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">نص شريط الأخبار</label>
+            <input 
+              name="news_ticker_text"
+              defaultValue={homeConfig?.news_ticker_text}
+              className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-emerald-500/20"
+              placeholder="توصيل مجاني للطلبات..."
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input 
+              type="checkbox"
+              name="news_ticker_enabled"
+              defaultChecked={homeConfig?.news_ticker_enabled}
+              id="ticker_enabled"
+              className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500"
+            />
+            <label htmlFor="ticker_enabled" className="text-sm font-bold text-gray-700">تفعيل شريط الأخبار</label>
+          </div>
+
+          <button 
+            type="submit"
+            className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-600/20"
+          >
+            حفظ التغييرات
+          </button>
+        </form>
+      </div>
+
+      <div className="bg-white rounded-[40px] p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-black text-gray-900">إدارة التصنيفات</h3>
+          <button 
+            onClick={() => setShowCategoryModal(true)}
+            className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2"
+          >
+            <Plus size={16} />
+            إضافة تصنيف
+          </button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {data.categories.map((cat) => (
+            <div key={cat.id} className="bg-gray-50 p-4 rounded-3xl flex flex-col items-center gap-2 border border-gray-100 relative group">
+              <div className={`w-12 h-12 ${cat.color || 'bg-emerald-50'} rounded-2xl flex items-center justify-center text-2xl`}>
+                {cat.icon || '📦'}
+              </div>
+              <span className="text-sm font-bold text-gray-900">{cat.name}</span>
+              <button 
+                onClick={() => handleDelete('categories', cat.id)}
+                className="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-500 rounded-full flex items-center justify-center transition-colors hover:bg-red-500 hover:text-white"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showStoreModal, setShowStoreModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [productFilter, setProductFilter] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [homeConfig, setHomeConfig] = useState<any>(null);
   const [data, setData] = useState<{
     stores: any[];
     products: any[];
@@ -39,12 +245,13 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [storesRes, productsRes, ordersRes, profilesRes, categoriesRes] = await Promise.all([
+      const [storesRes, productsRes, ordersRes, profilesRes, categoriesRes, homeConfigRes] = await Promise.all([
         supabase.from('stores').select('*, profiles(full_name, email)').order('created_at', { ascending: false }),
         supabase.from('products').select('*, stores(store_name)').order('created_at', { ascending: false }),
         supabase.from('orders').select('*, profiles(full_name)').order('created_at', { ascending: false }),
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('categories').select('*')
+        supabase.from('categories').select('*'),
+        supabase.from('home_config').select('*').single()
       ]);
 
       setData({
@@ -54,6 +261,7 @@ export default function AdminDashboard() {
         profiles: profilesRes.data || [],
         categories: categoriesRes.data || []
       });
+      setHomeConfig(homeConfigRes.data || {});
     } catch (error) {
       toast.error('حدث خطأ أثناء جلب البيانات');
     } finally {
@@ -113,12 +321,12 @@ export default function AdminDashboard() {
 
   const handleDelete = async (table: string, id: string) => {
     if (!confirm('هل أنت متأكد من الحذف؟')) return;
-    const { data, error } = await supabase.from(table).delete().eq('id', id).select();
+    
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    
     if (error) {
       console.error(`Delete error on ${table}:`, error);
       toast.error(`فشل الحذف: ${error.message}`);
-    } else if (!data || data.length === 0) {
-      toast.error('لم يتم الحذف: يبدو أنك لا تملك الصلاحية. يرجى تشغيل كود SQL الخاص بالصلاحيات.');
     } else {
       toast.success('تم الحذف بنجاح');
       fetchData();
@@ -193,7 +401,7 @@ export default function AdminDashboard() {
       title: formData.get('title'),
       price: parseFloat(formData.get('price') as string),
       stock_quantity: parseInt(formData.get('stock') as string),
-      description: formData.get('description'),
+      description: formData.get('description') || '',
       image_url: imageUrl,
       category_id: formData.get('category_id') || null,
       store_id: formData.get('store_id')
@@ -656,6 +864,13 @@ export default function AdminDashboard() {
           <Users size={24} />
           <span className="text-[10px] font-bold">المستخدمين</span>
         </button>
+        <button 
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-emerald-600' : 'text-gray-400'}`}
+        >
+          <LayoutDashboard size={24} />
+          <span className="text-[10px] font-bold">الواجهة</span>
+        </button>
       </div>
 
       <div className="md:mr-20">
@@ -668,9 +883,16 @@ export default function AdminDashboard() {
               {activeTab === 'products' && 'إدارة المنتجات'}
               {activeTab === 'orders' && 'إدارة الطلبات'}
               {activeTab === 'users' && 'إدارة المستخدمين'}
+              {activeTab === 'home' && 'إعدادات الواجهة'}
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => navigate('/')}
+              className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-600 hover:text-white transition-colors"
+            >
+              العودة للمتجر
+            </button>
             <button 
               onClick={fetchData}
               className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center"
@@ -694,10 +916,66 @@ export default function AdminDashboard() {
               {activeTab === 'products' && renderProducts()}
               {activeTab === 'orders' && renderOrders()}
               {activeTab === 'users' && renderUsers()}
+              {activeTab === 'home' && renderHomeConfig()}
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Category Modal */}
+      <AnimatePresence>
+        {showCategoryModal && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCategoryModal(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative w-full max-w-lg bg-white rounded-t-[40px] sm:rounded-[40px] p-8 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black text-gray-900">إضافة تصنيف جديد</h2>
+                <button onClick={() => setShowCategoryModal(false)} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveCategory} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">اسم التصنيف</label>
+                  <input 
+                    name="name"
+                    required
+                    className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-emerald-500/20"
+                    placeholder="مثال: إلكترونيات"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">الأيقونة (Emoji)</label>
+                  <input 
+                    name="icon"
+                    required
+                    className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-emerald-500/20"
+                    placeholder="مثال: 📱"
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-600/20"
+                >
+                  إضافة التصنيف
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Product Modal */}
       <AnimatePresence>

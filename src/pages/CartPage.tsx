@@ -15,7 +15,9 @@ export default function CartPage() {
 
   useEffect(() => {
     if (user) {
-      fetchItems(user.id);
+      // Treat admin as guest
+      const userId = user.email === 'saryatest123@gmail.com' ? null : user.id;
+      fetchItems(userId);
     }
   }, [user, fetchItems]);
 
@@ -23,6 +25,11 @@ export default function CartPage() {
 
   const handleCheckout = () => {
     navigate('/checkout');
+  };
+
+  // Helper to get correct user ID for cart actions
+  const getCartUserId = () => {
+    return user?.email === 'saryatest123@gmail.com' ? null : (user?.id || null);
   };
 
   if (loading && items.length === 0) {
@@ -55,12 +62,12 @@ export default function CartPage() {
     <div className="bg-gray-50 min-h-screen pb-40">
       {/* Header */}
       <header className="bg-white px-4 py-6 flex items-center justify-between sticky top-0 z-40">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
+        <button onClick={() => navigate('/')} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
           <ArrowRight size={20} />
         </button>
         <h1 className="text-xl font-black text-gray-900">سلة التسوق</h1>
         <button 
-          onClick={() => user && clearCart(user.id)}
+          onClick={() => clearCart(getCartUserId())}
           className="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center"
         >
           <Trash2 size={20} />
@@ -81,7 +88,7 @@ export default function CartPage() {
               <div className="flex items-start justify-between mb-1">
                 <h3 className="text-sm font-black text-gray-900 truncate">{item.product?.title}</h3>
                 <button 
-                  onClick={() => user && removeItem(user.id, item.id)}
+                  onClick={() => removeItem(getCartUserId(), item.id)}
                   className="text-gray-300 hover:text-red-500 transition-colors"
                 >
                   <Plus size={16} className="rotate-45" />
@@ -92,14 +99,14 @@ export default function CartPage() {
                 <span className="text-emerald-600 font-black">{item.product?.price}.00 ل.س</span>
                 <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-1">
                   <button 
-                    onClick={() => user && updateQuantity(user.id, item.id, Math.max(1, item.quantity - 1))}
+                    onClick={() => updateQuantity(getCartUserId(), item.id, Math.max(1, item.quantity - 1))}
                     className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-gray-400 shadow-sm"
                   >
                     <Minus size={16} />
                   </button>
                   <span className="text-sm font-black text-gray-900">{item.quantity}</span>
                   <button 
-                    onClick={() => user && updateQuantity(user.id, item.id, item.quantity + 1)}
+                    onClick={() => updateQuantity(getCartUserId(), item.id, item.quantity + 1)}
                     className="w-8 h-8 bg-emerald-600 text-white rounded-lg flex items-center justify-center shadow-sm"
                   >
                     <Plus size={16} />

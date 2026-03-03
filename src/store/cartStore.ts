@@ -16,11 +16,11 @@ interface CartState {
   items: CartItem[];
   loading: boolean;
   promoCode: string | null;
-  fetchItems: (userId: string) => Promise<void>;
-  addItem: (userId: string, productId: string, quantity?: number) => Promise<void>;
-  removeItem: (userId: string, itemId: string) => Promise<void>;
-  updateQuantity: (userId: string, itemId: string, quantity: number) => Promise<void>;
-  clearCart: (userId: string) => Promise<void>;
+  fetchItems: (userId: string | null) => Promise<void>;
+  addItem: (userId: string | null, productId: string, quantity?: number) => Promise<void>;
+  removeItem: (userId: string | null, itemId: string) => Promise<void>;
+  updateQuantity: (userId: string | null, itemId: string, quantity: number) => Promise<void>;
+  clearCart: (userId: string | null) => Promise<void>;
   applyPromoCode: (code: string) => void;
   getTotals: () => {
     subtotal: number;
@@ -36,8 +36,19 @@ export const useCartStore = create<CartState>((set, get) => ({
   loading: false,
   promoCode: null,
 
-  fetchItems: async (userId: string) => {
+  fetchItems: async (userId: string | null) => {
     set({ loading: true });
+    if (!userId) {
+      // Guest mode: load from localStorage
+      const savedCart = localStorage.getItem('guest_cart');
+      if (savedCart) {
+        set({ items: JSON.parse(savedCart), loading: false });
+      } else {
+        set({ items: [], loading: false });
+      }
+      return;
+    }
+
     const { data, error } = await supabase
       .from('cart_items')
       .select('*, product:products(title, price, image_url)')
@@ -51,7 +62,38 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  addItem: async (userId: string, productId: string, quantity = 1) => {
+  addItem: async (userId: string | null, productId: string, quantity = 1) => {
+    if (!userId) {
+      // Guest mode: add to localStorage
+      const { items } = get();
+      const existingItemIndex = items.findIndex(item => item.product_id === productId);
+      let newItems = [...items];
+
+      if (existingItemIndex >= 0) {
+        newItems[existingItemIndex].quantity += quantity;
+      } else {
+        // Need to fetch product details for local display
+        const { data: product } = await supabase
+          .from('products')
+          .select('title, price, image_url')
+          .eq('id', productId)
+          .single();
+          
+        if (product) {
+          newItems.push({
+            id: `guest-${Date.now()}`,
+            product_id: productId,
+            quantity,
+            product: product as any
+          });
+        }
+      }
+      
+      set({ items: newItems });
+      localStorage.setItem('guest_cart', JSON.stringify(newItems));
+      return;
+    }
+
     // Check if item already exists
     const { data: existingItem } = await supabase
       .from('cart_items')
@@ -86,7 +128,15 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  removeItem: async (userId: string, itemId: string) => {
+  removeItem: async (userId: string | null, itemId: string) => {
+    if (!userId) {
+      const { items } = get();
+      const newItems = items.filter((item) => item.id !== itemId);
+      set({ items: newItems });
+      localStorage.setItem('guest_cart', JSON.stringify(newItems));
+      return;
+    }
+
     const { error } = await supabase
       .from('cart_items')
       .delete()
@@ -101,7 +151,17 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  updateQuantity: async (userId: string, itemId: string, quantity: number) => {
+  updateQuantity: async (userId: string | null, itemId: string, quantity: number) => {
+    if (!userId) {
+      const { items } = get();
+      const newItems = items.map((item) =>
+        item.id === itemId ? { ...item, quantity } : item
+      );
+      set({ items: newItems });
+      localStorage.setItem('guest_cart', JSON.stringify(newItems));
+      return;
+    }
+
     const { error } = await supabase
       .from('cart_items')
       .update({ quantity })
@@ -118,7 +178,13 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  clearCart: async (userId: string) => {
+  clearCart: async (userId: string | null) => {
+    if (!userId) {
+      set({ items: [] });
+      localStorage.removeItem('guest_cart');
+      return;
+    }
+
     const { error } = await supabase
       .from('cart_items')
       .delete()

@@ -36,6 +36,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const mockUser = localStorage.getItem('wasiny_mock_user');
     if (mockUser) {
       const parsedUser = JSON.parse(mockUser);
+      // Fix for legacy invalid UUID
+      if (parsedUser.id === 'admin-id') {
+         parsedUser.id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+         localStorage.setItem('wasiny_mock_user', JSON.stringify(parsedUser));
+      }
       setUser(parsedUser);
       setProfile({ role: 'admin', full_name: 'Admin User', email: parsedUser.email });
       setLoading(false);
@@ -80,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInAsAdmin = () => {
     const adminUser = {
-      id: 'admin-id',
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // Valid UUID
       email: 'saryatest123@gmail.com',
       user_metadata: { full_name: 'Admin User' },
       aud: 'authenticated',

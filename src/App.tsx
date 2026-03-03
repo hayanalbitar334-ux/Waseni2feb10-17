@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Home, LayoutGrid, ShoppingCart, ClipboardList, User, Bell, Search, Filter } from 'lucide-react';
 import { cn } from './types';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -19,6 +19,7 @@ import ProductDetailsPage from './pages/ProductDetailsPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ProfilePage from './pages/ProfilePage';
+import OrdersPage from './pages/OrdersPage';
 import AdminDashboard from './pages/AdminDashboard';
 import MerchantDashboard from './pages/MerchantDashboard';
 import LoginPage from './pages/LoginPage';
@@ -33,12 +34,13 @@ function BottomNav() {
   useEffect(() => {
     if (user) {
       fetchItems(user.id);
+    } else {
+      fetchItems(null);
     }
   }, [user, fetchItems]);
 
   const navItems = [
     { icon: Home, label: 'الرئيسية', path: '/' },
-    { icon: LayoutGrid, label: 'الفئات', path: '/categories' },
     { icon: ShoppingCart, label: 'السلة', path: '/cart', badge: items.length > 0 ? items.length : undefined },
     { icon: ClipboardList, label: 'الطلبات', path: '/orders' },
     { icon: User, label: 'حسابي', path: user ? '/profile' : '/login' },
@@ -92,9 +94,10 @@ export default function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/product/:id" element={<ProductDetailsPage />} />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
             
             {/* Protected Routes */}
-            <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+            <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/merchant" element={<ProtectedRoute requiredRole="seller"><MerchantDashboard /></ProtectedRoute>} />
