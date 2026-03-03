@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 export default function ProductDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { product, loading, error } = useProduct(id || '');
   const addItem = useCartStore(state => state.addItem);
   
@@ -27,11 +27,22 @@ export default function ProductDetailsPage() {
       return;
     }
     
+    if (!profile) {
+      console.error('User profile not found for user:', user.id);
+      toast.error('لم يتم العثور على ملف المستخدم. يرجى تسجيل الخروج والدخول مرة أخرى.');
+      return;
+    }
+
     try {
+      if (!product.id) {
+        toast.error('بيانات المنتج غير مكتملة');
+        return;
+      }
       await addItem(user.id, product.id, quantity);
       toast.success('تمت إضافة المنتج للسلة بنجاح');
-    } catch (err) {
-      toast.error('حدث خطأ أثناء إضافة المنتج');
+    } catch (err: any) {
+      console.error('Add to cart error in ProductDetailsPage:', err);
+      toast.error(`حدث خطأ أثناء إضافة المنتج: ${err.message || 'خطأ غير معروف'}`);
     }
   };
 
@@ -110,7 +121,7 @@ export default function ProductDetailsPage() {
 
       {/* Image Gallery */}
       <div className="relative aspect-square bg-gray-100">
-        <img src={product.image} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+        <img src={product.image_url} alt={product.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
         <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2">
           <div className="w-2 h-2 rounded-full bg-gray-300" />
           <div className="w-2 h-2 rounded-full bg-gray-300" />
@@ -124,15 +135,15 @@ export default function ProductDetailsPage() {
           <div className="flex items-center gap-1">
             <Star size={16} className="fill-yellow-400 text-yellow-400" />
             <span className="text-sm font-bold text-gray-900">{product.rating}</span>
-            <span className="text-xs text-gray-400">(120 مراجعة)</span>
+            <span className="text-xs text-gray-400">({product.reviews_count || 0} مراجعة)</span>
           </div>
           <span className="text-emerald-600 text-xs font-bold bg-emerald-50 px-2 py-1 rounded-lg">متوفر في المخزون</span>
         </div>
 
-        <h1 className="text-2xl font-black text-gray-900 mb-2">{product.name}</h1>
+        <h1 className="text-2xl font-black text-gray-900 mb-2">{product.title}</h1>
         <div className="flex items-center gap-3 mb-6">
-          <span className="text-3xl font-black text-emerald-600">{product.price} ر.س</span>
-          <span className="text-lg text-gray-300 line-through">399 ر.س</span>
+          <span className="text-3xl font-black text-emerald-600">{product.price} ل.س</span>
+          <span className="text-lg text-gray-300 line-through">399 ل.س</span>
           <span className="bg-emerald-50 text-emerald-600 text-xs font-bold px-2 py-1 rounded-lg">خصم 25%</span>
         </div>
 

@@ -46,19 +46,43 @@ export const useCartStore = create<CartState>((set, get) => ({
     if (!error && data) {
       set({ items: data as any, loading: false });
     } else {
+      console.error('Fetch cart items error:', error);
       set({ loading: false });
     }
   },
 
   addItem: async (userId: string, productId: string, quantity = 1) => {
-    const { data, error } = await supabase
+    // Check if item already exists
+    const { data: existingItem } = await supabase
       .from('cart_items')
-      .upsert({ user_id: userId, product_id: productId, quantity }, { onConflict: 'user_id,product_id' })
-      .select()
+      .select('id, quantity')
+      .eq('user_id', userId)
+      .eq('product_id', productId)
       .single();
 
-    if (!error && data) {
+    let result;
+    if (existingItem) {
+      // Update quantity
+      result = await supabase
+        .from('cart_items')
+        .update({ quantity: existingItem.quantity + quantity })
+        .eq('id', existingItem.id)
+        .select()
+        .single();
+    } else {
+      // Insert new item
+      result = await supabase
+        .from('cart_items')
+        .insert({ user_id: userId, product_id: productId, quantity })
+        .select()
+        .single();
+    }
+
+    if (!result.error && result.data) {
       await get().fetchItems(userId);
+    } else {
+      console.error('Add to cart error:', result.error);
+      throw result.error;
     }
   },
 
@@ -72,6 +96,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       set((state) => ({
         items: state.items.filter((item) => item.id !== itemId),
       }));
+    } else {
+      console.error('Remove item error:', error);
     }
   },
 
@@ -87,6 +113,8 @@ export const useCartStore = create<CartState>((set, get) => ({
           item.id === itemId ? { ...item, quantity } : item
         ),
       }));
+    } else {
+      console.error('Update quantity error:', error);
     }
   },
 

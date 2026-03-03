@@ -46,9 +46,13 @@ export default function MerchantDashboard() {
 
   const handleDeleteProduct = async (id: string) => {
     if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
-    const { error } = await supabase.from('products').delete().eq('id', id);
-    if (error) toast.error('فشل حذف المنتج');
-    else {
+    const { data, error } = await supabase.from('products').delete().eq('id', id).select();
+    if (error) {
+      console.error('Delete product error:', error);
+      toast.error(`فشل حذف المنتج: ${error.message}`);
+    } else if (!data || data.length === 0) {
+      toast.error('لم يتم الحذف: يبدو أنك لا تملك الصلاحية.');
+    } else {
       toast.success('تم حذف المنتج بنجاح');
       setProducts(products.filter(p => p.id !== id));
     }
@@ -105,16 +109,22 @@ export default function MerchantDashboard() {
     };
 
     let error;
+    let data;
     if (editingProduct) {
-      const { error: err } = await supabase.from('products').update(productData).eq('id', editingProduct.id);
+      const { data: updatedData, error: err } = await supabase.from('products').update(productData).eq('id', editingProduct.id).select();
       error = err;
+      data = updatedData;
     } else {
-      const { error: err } = await supabase.from('products').insert([productData]);
+      const { data: insertedData, error: err } = await supabase.from('products').insert([productData]).select();
       error = err;
+      data = insertedData;
     }
 
     if (error) {
-      toast.error('فشل حفظ المنتج');
+      console.error('Save product error:', error);
+      toast.error(`فشل حفظ المنتج: ${error.message}`);
+    } else if (!data || data.length === 0) {
+      toast.error('لم يتم الحفظ: يبدو أنك لا تملك الصلاحية.');
     } else {
       toast.success(editingProduct ? 'تم تحديث المنتج' : 'تم إضافة المنتج');
       setShowProductModal(false);
@@ -181,7 +191,7 @@ export default function MerchantDashboard() {
                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+١٢%</span>
                    <span className="text-sm text-gray-400">إجمالي المبيعات</span>
                  </div>
-                 <h2 className="text-3xl font-black text-gray-900 text-center mb-6">{stats.totalSales.toLocaleString()} ر.س</h2>
+                 <h2 className="text-3xl font-black text-gray-900 text-center mb-6">{stats.totalSales.toLocaleString()} ل.س</h2>
                  <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-50 rounded-3xl p-4 flex flex-col items-center">
                       <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-2">
@@ -261,7 +271,7 @@ export default function MerchantDashboard() {
                         </div>
                         <p className="text-[10px] text-gray-400 mb-2">الكمية: {item.quantity}</p>
                         <div className="flex items-center justify-between">
-                          <span className="text-emerald-600 font-black text-sm">{item.unit_price * item.quantity} ر.س</span>
+                          <span className="text-emerald-600 font-black text-sm">{item.unit_price * item.quantity} ل.س</span>
                           <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${
                             item.orders?.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' : 
                             item.orders?.status === 'pending' ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600'
@@ -300,7 +310,7 @@ export default function MerchantDashboard() {
                   </div>
                   <div className="flex-1">
                     <h4 className="text-sm font-black text-gray-900">{product.title}</h4>
-                    <p className="text-xs text-emerald-600 font-bold">{product.price} ر.س</p>
+                    <p className="text-xs text-emerald-600 font-bold">{product.price} ل.س</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button 
@@ -348,7 +358,7 @@ export default function MerchantDashboard() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between pt-3 border-t border-dashed border-gray-200">
-                    <span className="text-emerald-600 font-black text-sm">{item.unit_price * item.quantity} ر.س</span>
+                    <span className="text-emerald-600 font-black text-sm">{item.unit_price * item.quantity} ل.س</span>
                     <select 
                       value={item.orders?.status}
                       onChange={async (e) => {
@@ -413,7 +423,7 @@ export default function MerchantDashboard() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">السعر (ر.س)</label>
+                    <label className="text-sm font-bold text-gray-700">السعر (ل.س)</label>
                     <input 
                       name="price"
                       type="number"

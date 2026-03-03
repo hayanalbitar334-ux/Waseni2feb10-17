@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Home, LayoutGrid, ShoppingCart, ClipboardList, User, Bell, Search, Filter } from 'lucide-react';
 import { cn } from './types';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useCartStore } from './store/cartStore';
 
 import { Toaster } from 'sonner';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -27,11 +28,18 @@ function BottomNav() {
   const location = useLocation();
   const path = location.pathname;
   const { user, profile } = useAuth();
+  const { items, fetchItems } = useCartStore();
+
+  useEffect(() => {
+    if (user) {
+      fetchItems(user.id);
+    }
+  }, [user, fetchItems]);
 
   const navItems = [
     { icon: Home, label: 'الرئيسية', path: '/' },
     { icon: LayoutGrid, label: 'الفئات', path: '/categories' },
-    { icon: ShoppingCart, label: 'السلة', path: '/cart', badge: 3 },
+    { icon: ShoppingCart, label: 'السلة', path: '/cart', badge: items.length > 0 ? items.length : undefined },
     { icon: ClipboardList, label: 'الطلبات', path: '/orders' },
     { icon: User, label: 'حسابي', path: user ? '/profile' : '/login' },
   ];

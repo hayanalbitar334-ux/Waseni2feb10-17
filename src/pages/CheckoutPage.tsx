@@ -12,7 +12,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items, getTotals } = useCartStore();
-  const [paymentMethod, setPaymentMethod] = useState('apple');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -107,9 +107,7 @@ export default function CheckoutPage() {
           <h2 className="text-lg font-black text-gray-900 mb-4">طريقة الدفع</h2>
           <div className="space-y-3">
             {[
-              { id: 'apple', name: 'Apple Pay', desc: 'دفع سريع وآمن', icon: Apple, color: 'bg-black text-white' },
-              { id: 'card', name: 'بطاقة ائتمان', desc: 'مدى، فيزا، ماستركارد', icon: CreditCard, color: 'bg-emerald-50 text-emerald-600' },
-              { id: 'cash', name: 'الدفع عند الاستلام', desc: 'رسوم إضافية 10 ر.س', icon: Wallet, color: 'bg-emerald-50 text-emerald-600' },
+              { id: 'cash', name: 'الدفع عند الاستلام', desc: 'الدفع نقداً عند استلام الطلب', icon: Wallet, color: 'bg-emerald-50 text-emerald-600' },
             ].map((method) => (
               <label 
                 key={method.id}
@@ -156,7 +154,7 @@ export default function CheckoutPage() {
                   <h3 className="text-sm font-black text-gray-900">{item.product?.title}</h3>
                   <p className="text-[10px] text-gray-400">الكمية: {item.quantity}</p>
                 </div>
-                <span className="text-emerald-600 font-black text-sm">{item.product?.price} ر.س</span>
+                <span className="text-emerald-600 font-black text-sm">{item.product?.price} ل.س</span>
               </div>
             ))}
           </div>
@@ -167,26 +165,26 @@ export default function CheckoutPage() {
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">المجموع الفرعي</span>
-              <span className="text-gray-900 font-bold">{totals.subtotal}.00 ر.س</span>
+              <span className="text-gray-900 font-bold">{totals.subtotal}.00 ل.س</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">رسوم التوصيل</span>
-              <span className="text-emerald-600 font-bold">{totals.shipping === 0 ? 'مجاني' : `${totals.shipping} ر.س`}</span>
+              <span className="text-emerald-600 font-bold">{totals.shipping === 0 ? 'مجاني' : `${totals.shipping} ل.س`}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">ضريبة القيمة المضافة (15%)</span>
-              <span className="text-gray-900 font-bold">{totals.tax.toFixed(2)} ر.س</span>
+              <span className="text-gray-900 font-bold">{totals.tax.toFixed(2)} ل.س</span>
             </div>
             {totals.discount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-red-500">الخصم</span>
-                <span className="text-red-500 font-bold">-{totals.discount.toFixed(2)} ر.س</span>
+                <span className="text-red-500 font-bold">-{totals.discount.toFixed(2)} ل.س</span>
               </div>
             )}
           </div>
           <div className="pt-4 border-t border-dashed border-gray-100 flex justify-between items-center">
             <span className="text-xl font-black text-gray-900">الإجمالي الكلي</span>
-            <span className="text-2xl font-black text-emerald-600">{totals.total.toFixed(2)} ر.س</span>
+            <span className="text-2xl font-black text-emerald-600">{totals.total.toFixed(2)} ل.س</span>
           </div>
         </section>
       </div>

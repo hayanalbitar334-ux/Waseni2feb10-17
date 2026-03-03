@@ -14,7 +14,7 @@ export interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'grid' }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const addItem = useCartStore(state => state.addItem);
   const [isFavorite, setIsFavorite] = React.useState(false);
 
@@ -30,11 +30,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'gr
         navigate('/login');
         return;
       }
+      if (!profile) {
+        console.error('User profile not found for user:', user.id);
+        toast.error('لم يتم العثور على ملف المستخدم. يرجى تسجيل الخروج والدخول مرة أخرى.');
+        return;
+      }
+      
       try {
+        if (!product.id) {
+          console.error('Product ID is missing', product);
+          toast.error('بيانات المنتج غير مكتملة');
+          return;
+        }
         await addItem(user.id, product.id, 1);
         toast.success('تمت إضافة المنتج للسلة');
-      } catch (err) {
-        toast.error('حدث خطأ أثناء إضافة المنتج');
+      } catch (err: any) {
+        console.error('Add to cart error in ProductCard:', err);
+        toast.error(`حدث خطأ أثناء إضافة المنتج: ${err.message || 'خطأ غير معروف'}`);
       }
     }
   };
@@ -54,7 +66,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'gr
         <h3 className="text-sm font-bold text-gray-900 mb-1 truncate">{product.title}</h3>
         <p className="text-[10px] text-gray-400 mb-2">متجر وصيني</p>
         <div className="flex items-center justify-between">
-          <span className="text-emerald-600 font-bold text-sm">{product.price} ر.س</span>
+          <span className="text-emerald-600 font-bold text-sm">{product.price} ل.س</span>
         </div>
       </Link>
     );
@@ -87,7 +99,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'gr
           <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{product.title}</h3>
           <p className="text-[10px] text-gray-400 mb-2">متجر وصيني</p>
           <div className="flex items-center justify-between">
-            <span className="text-emerald-600 font-bold">{product.price} ر.س</span>
+            <span className="text-emerald-600 font-bold">{product.price} ل.س</span>
             <button 
               onClick={(e) => handleAction(e, 'cart')}
               className="w-8 h-8 bg-emerald-600 text-white rounded-lg flex items-center justify-center"

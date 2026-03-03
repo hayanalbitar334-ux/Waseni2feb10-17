@@ -20,6 +20,15 @@ CREATE POLICY "Public profiles are viewable by everyone" ON profiles
 CREATE POLICY "Users can update their own profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
+CREATE POLICY "Admins can update any profile" ON profiles
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  );
+
 -- 2. Stores Table
 CREATE TABLE stores (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

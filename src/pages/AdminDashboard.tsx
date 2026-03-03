@@ -66,11 +66,39 @@ export default function AdminDashboard() {
   }, []);
 
   const handleUpdateUserRole = async (id: string, role: string) => {
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', id);
-    if (error) toast.error('فشل تحديث الدور');
-    else {
-      toast.success('تم تحديث دور المستخدم');
-      fetchData();
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    
+    if (currentUser?.id === id) {
+      toast.error('لا يمكنك تغيير رتبة نفسك من هنا');
+      return;
+    }
+
+    // تحديث متفائل: تحديث الواجهة فوراً
+    const previousProfiles = [...data.profiles];
+    const updatedProfiles = data.profiles.map(p => 
+      p.id === id ? { ...p, role } : p
+    );
+    
+    setData(prev => ({ ...prev, profiles: updatedProfiles }));
+
+    // استدعاء الدالة الآمنة من قاعدة البيانات
+    const { error } = await supabase.rpc('update_user_role', {
+      target_user_id: id,
+      new_role: role
+    });
+    
+    if (error) {
+      console.error('Update role error:', error);
+      // تراجع عن التغيير في حال حدوث خطأ
+      setData(prev => ({ ...prev, profiles: previousProfiles }));
+      
+      if (error.message.includes('Could not find the function')) {
+         toast.error('يرجى تشغيل كود SQL الجديد لإنشاء دالة update_user_role في Supabase');
+      } else {
+         toast.error(`فشل التحديث: ${error.message}`);
+      }
+    } else {
+      toast.success('تم تحديث دور المستخدم بنجاح');
     }
   };
 
@@ -85,9 +113,13 @@ export default function AdminDashboard() {
 
   const handleDelete = async (table: string, id: string) => {
     if (!confirm('هل أنت متأكد من الحذف؟')) return;
-    const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) toast.error('فشل الحذف');
-    else {
+    const { data, error } = await supabase.from(table).delete().eq('id', id).select();
+    if (error) {
+      console.error(`Delete error on ${table}:`, error);
+      toast.error(`فشل الحذف: ${error.message}`);
+    } else if (!data || data.length === 0) {
+      toast.error('لم يتم الحذف: يبدو أنك لا تملك الصلاحية. يرجى تشغيل كود SQL الخاص بالصلاحيات.');
+    } else {
       toast.success('تم الحذف بنجاح');
       fetchData();
     }
@@ -105,16 +137,22 @@ export default function AdminDashboard() {
   const handleSaveStore = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const storeData = {
-      store_name: formData.get('store_name'),
-      owner_id: formData.get('owner_id'),
-      is_approved: true
-    };
+    const store_name = formData.get('store_name') as string;
+    const owner_id = formData.get('owner_id') as string;
 
-    const { error } = await supabase.from('stores').insert([storeData]);
+    // استدعاء الدالة الآمنة من قاعدة البيانات لإنشاء المتجر كمسؤول
+    const { error } = await supabase.rpc('create_store_as_admin', {
+      p_store_name: store_name,
+      p_owner_id: owner_id
+    });
 
     if (error) {
-      toast.error('فشل إنشاء المتجر: ' + error.message);
+      console.error('Create store error:', error);
+      if (error.message.includes('Could not find the function')) {
+         toast.error('يرجى تشغيل كود SQL الجديد لإنشاء دالة create_store_as_admin في Supabase');
+      } else {
+         toast.error(`فشل إنشاء المتجر: ${error.message}`);
+      }
     } else {
       toast.success('تم إنشاء المتجر بنجاح');
       setShowStoreModal(false);
@@ -157,21 +195,40 @@ export default function AdminDashboard() {
       stock_quantity: parseInt(formData.get('stock') as string),
       description: formData.get('description'),
       image_url: imageUrl,
-      category_id: formData.get('category_id'),
+      category_id: formData.get('category_id') || null,
       store_id: formData.get('store_id')
     };
 
     let error;
+    let data;
     if (editingProduct) {
-      const { error: err } = await supabase.from('products').update(productData).eq('id', editingProduct.id);
+      const { data: updatedData, error: err } = await supabase.from('products').update(productData).eq('id', editingProduct.id).select();
       error = err;
+      data = updatedData;
     } else {
-      const { error: err } = await supabase.from('products').insert([productData]);
+      // استدعاء الدالة الآمنة من قاعدة البيانات لإضافة المنتج كمسؤول
+      const { error: err } = await supabase.rpc('create_product_as_admin', {
+        p_title: productData.title,
+        p_description: productData.description,
+        p_price: productData.price,
+        p_stock_quantity: productData.stock_quantity,
+        p_image_url: productData.image_url,
+        p_category_id: productData.category_id,
+        p_store_id: productData.store_id
+      });
       error = err;
+      data = [{}]; // Dummy data to pass the check
     }
 
     if (error) {
-      toast.error('فشل حفظ المنتج');
+      console.error('Save product error:', error);
+      if (error.message.includes('Could not find the function')) {
+         toast.error('يرجى تشغيل كود SQL الجديد لإنشاء دالة create_product_as_admin في Supabase');
+      } else {
+         toast.error(`فشل حفظ المنتج: ${error.message}`);
+      }
+    } else if (editingProduct && (!data || data.length === 0)) {
+      toast.error('لم يتم التحديث: يبدو أنك لا تملك الصلاحية. يرجى تشغيل كود SQL الخاص بالصلاحيات.');
     } else {
       toast.success(editingProduct ? 'تم تحديث المنتج' : 'تم إضافة المنتج');
       setShowProductModal(false);
@@ -424,7 +481,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-gray-900 ml-2">{product.price} ر.س</span>
+                <span className="text-xs font-black text-gray-900 ml-2">{product.price} ل.س</span>
                 <button 
                   onClick={() => { setEditingProduct(product); setShowProductModal(true); }}
                   className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors"
@@ -468,7 +525,7 @@ export default function AdminDashboard() {
               </span>
             </div>
             <div className="flex items-center justify-between pt-3 border-t border-dashed border-gray-200">
-              <span className="text-sm font-black text-emerald-600">{order.total_amount} ر.س</span>
+              <span className="text-sm font-black text-emerald-600">{order.total_amount} ل.س</span>
               <div className="flex gap-2">
                 <select 
                   value={order.status}
@@ -682,7 +739,7 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">السعر (ر.س)</label>
+                    <label className="text-sm font-bold text-gray-700">السعر (ل.س)</label>
                     <input 
                       name="price"
                       type="number"

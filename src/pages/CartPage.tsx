@@ -89,7 +89,7 @@ export default function CartPage() {
               </div>
               <p className="text-[10px] text-emerald-600 font-bold mb-3">متوفر في المخزون</p>
               <div className="flex items-center justify-between">
-                <span className="text-emerald-600 font-black">{item.product?.price}.00 ر.س</span>
+                <span className="text-emerald-600 font-black">{item.product?.price}.00 ل.س</span>
                 <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-1">
                   <button 
                     onClick={() => user && updateQuantity(user.id, item.id, Math.max(1, item.quantity - 1))}
@@ -129,26 +129,26 @@ export default function CartPage() {
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">المجموع الفرعي</span>
-              <span className="text-gray-900 font-bold">{totals.subtotal}.00 ر.س</span>
+              <span className="text-gray-900 font-bold">{totals.subtotal}.00 ل.س</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">رسوم التوصيل</span>
-              <span className="text-gray-900 font-bold">{totals.shipping}.00 ر.س</span>
+              <span className="text-gray-900 font-bold">{totals.shipping}.00 ل.س</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">ضريبة القيمة المضافة (15%)</span>
-              <span className="text-gray-900 font-bold">{totals.tax.toFixed(2)} ر.س</span>
+              <span className="text-gray-900 font-bold">{totals.tax.toFixed(2)} ل.س</span>
             </div>
             {totals.discount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-red-500">الخصم</span>
-                <span className="text-red-500 font-bold">-{totals.discount.toFixed(2)} ر.س</span>
+                <span className="text-red-500 font-bold">-{totals.discount.toFixed(2)} ل.س</span>
               </div>
             )}
           </div>
           <div className="pt-4 border-t border-dashed border-gray-100 flex justify-between items-center">
             <span className="text-xl font-black text-gray-900">الإجمالي</span>
-            <span className="text-2xl font-black text-emerald-600">{totals.total.toFixed(2)} ر.س</span>
+            <span className="text-2xl font-black text-emerald-600">{totals.total.toFixed(2)} ل.س</span>
           </div>
         </div>
       </div>
